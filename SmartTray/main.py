@@ -1,7 +1,7 @@
 Version = "v1.19"
 import os, uos, network, usocket, ussl, sensor, image, machine, time, gc, pyb, tf, senko, urequests
 from mqtt import MQTTClient
-OTA = senko.Senko(user="SeahorseRTHK", repo="KFS-OTA", working_dir="SmartTray", files=["update.py"])
+OTA = senko.Senko(user="SeahorseRTHK", repo="Seahorse", working_dir="SmartTray", files=["update.py"])
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
 sensor.set_framesize(sensor.UXGA)
