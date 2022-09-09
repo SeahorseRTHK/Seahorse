@@ -246,6 +246,7 @@ def detectFeed():
 			if predictions_list[i][1]*100 >= 50.0001:
 				result2 = (predictions_list[i][0])
 	sendLINEphoto(result2, img, result2)
+    	MQTT.publish("86Box/Photo", result2)
 	MQTT.publish(mainTopic+"/AI", result2)
 	MQTT.publish(mainTopic+"/AI/Photo", img.compress(quality=80))
 	del result2
