@@ -1,4 +1,4 @@
-Version = "v1.19"
+Version = "Cam-v1.20"
 import os, uos, network, usocket, ussl, sensor, image, machine, time, gc, pyb, tf, senko, urequests
 from mqtt import MQTTClient
 OTA = senko.Senko(user="SeahorseRTHK", repo="Seahorse", working_dir="SmartTray", files=["update.py"])
@@ -53,7 +53,6 @@ except OSError:
 	message = "cam:no-setting-is-available"
 	print("Created new camInfo.txt file with cam:no-setting-is-available")
 	f.close()
-gc.collect()
 mainTopic = message
 MQTT = MQTTClient(mainTopic, "vps.seahorse.asia", port=1883, keepalive=60000)
 try:
@@ -105,7 +104,6 @@ def callback(topic, msg):
 		sensor.set_framesize(sensor.QVGA)
 		sensor.set_windowing(240,240)
 		img = sensor.snapshot().compress(quality=75)
-		print(img)
 		MQTT.publish(mainTopic+"/Photo", img)
 		del img
 	elif msg == b'update':
@@ -128,10 +126,16 @@ def callback(topic, msg):
 		MQTT.publish(mainTopic + "/state", "Restarting")
 		sendLINEmsg("Command received, restarting")
 		machine.reset()
+	elif msg == b'reset':
+		print("Reseting")
+		MQTT.publish(mainTopic + "/state", "Reseting")
+		sendLINEmsg(mainTopic + " is reseting")
+		f = open("camInfo.txt", "w")
+		f.write("cam:no-setting-is-available")
+		f.close()
+		machine.reset()
 	elif msg == b'detectfeed':
 		print("Detecting feed")
-		gc.collect()
-		print(gc.mem_free())
 		detectFeed()
 	elif msg == b'collectdata':
 		count = 1
@@ -163,7 +167,7 @@ def sendLINEmsg(msg):
 	request += "cache-control: no-cache\r\n"
 	request += "Authorization: Bearer " + token + "\r\n"
 	request += "Content-Type: multipart/form-data; boundary=Taiwan\r\n"
-	request += "User-Agent: CAM-KFS\r\n"
+	request += "User-Agent: Honwis\r\n"
 	request += "Accept: */*\r\n"
 	request += "HOST: " + HOST + "\r\n"
 	request += "accept-encoding: gzip, deflate\r\n"
@@ -237,23 +241,11 @@ def sendLINEphoto(msg,img,text):
 def detectFeed():
 	sensor.set_framesize(sensor.UXGA)
 	img = sensor.snapshot()
-	for obj in net.classify(img, min_scale=1.0, scale_mul=0.8, x_overlap=0.5, y_overlap=0.5):
-		print("**********\nPredictions at [x=%d,y=%d,w=%d,h=%d]" % obj.rect())
-		img.draw_rectangle(obj.rect())
-		predictions_list = list(zip(labels, obj.output()))
-		for i in range(len(predictions_list)):
-			print("%s = %f" % (predictions_list[i][0], predictions_list[i][1]))
-			if predictions_list[i][1]*100 >= 50.0001:
-				result2 = (predictions_list[i][0])
-	sendLINEphoto(result2, img, result2)
-    	MQTT.publish("86Box/Photo", result2)
-	MQTT.publish(mainTopic+"/AI", result2)
-	MQTT.publish(mainTopic+"/AI/Photo", img.compress(quality=80))
-	del result2
-	del obj
+	sendLINEphoto("Detecting feed:", img, None)
+	MQTT.publish("86Box/Photo/Raw", img.compress(quality=90))
 	gc.collect()
 MQTT.publish(mainTopic + "/state", "ONLINE")
-sendLINEmsg(mainTopic + "-" + Version + " is online" + ". IP: " + wlan.ifconfig()[0] + ". RSSI: " + str(wlan.rssi()))
+sendLINEmsg(mainTopic + " " + Version + " is online" + ". IP: " + wlan.ifconfig()[0] + ". RSSI: " + str(wlan.rssi()))
 time.sleep_ms(500)
 f = open("camInfo.txt", "r")
 temp = f.read(4)
@@ -314,7 +306,6 @@ try:
 	labels = [line.rstrip('\n') for line in open("labels.txt")]
 except Exception as e:
 	raise Exception('Failed to load "labels.txt", did you copy the .tflite and labels.txt file onto the mass-storage device? (' + str(e) + ')')
-gc.collect()
 start = pyb.millis()
 while True:
 	if (wlan.isconnected() == True):
